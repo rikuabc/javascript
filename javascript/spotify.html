@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify アーティストの人気曲と再生</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        #artist-search {
+            margin: 20px;
+        }
+        .song {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        img {
+            width: 50px;
+            height: 50px;
+            margin-right: 15px;
+        }
+        .rank {
+            font-size: 24px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .song-info {
+            display: inline-block;
+            text-align: left;
+        }
+        iframe {
+            margin-top: 20px;
+            border: none;
+            width: 100%;
+            height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spotify アーティストの人気曲ランキング</h1>
+
+    <!-- アーティスト検索フォーム -->
+    <div id="artist-search">
+        <input type="text" id="artist-name" placeholder="アーティスト名を入力" />
+        <button onclick="searchArtist()">検索</button>
+    </div>
+
+    <div id="song-list"></div>
+
+    <div id="player-container">
+        <!-- 音楽プレーヤーがここに表示されます -->
+    </div>
+
+    <script>
+        // ここに取得したアクセストークンを設定
+        const accessToken = "35c74d508277450e9ea8a4c8cb0d2541";
+       
+        const CLIENT_ID="35c74d508277450e9ea8a4c8cb0d2541";
+        const CLIENT_SECRET="b6d2e33d2da44cf6b111dad88d76e3f3";
+        // Spotifyのアクセストークンを設定してください
+        // アーティスト名でアーティストを検索
+        async function searchArtist() {
+            const artistName = document.getElementById('artist-name').value;
+            if (!artistName) {
+                alert('アーティスト名を入力してください');
+                return;
+            }
+
+            // アーティストを検索するSpotify APIのエンドポイント
+            const searchUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`;
+
+            const response = await fetch(searchUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const artist = data.artists.items[0];
+                if (artist) {
+                    // アーティストが見つかった場合、そのIDを使って人気曲を取得
+                    getTopTracks(artist.id);
+                } else {
+                    alert('アーティストが見つかりませんでした');
+                }
+            } else {
+                console.error('Spotify API error:', response.statusText);
+                alert('検索中にエラーが発生しました');
+            }
+        }
+
+        // アーティストのIDを使って人気曲を取得
+        async function getTopTracks(artistId) {
+            const url = `https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=JP`; // 日本市場での人気曲を取得
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                displayTopTracks(data.tracks);
+            } else {
+                console.error('Spotify API error:', response.statusText);
+                alert('人気曲の取得に失敗しました');
+            }
+        }
+
+        // 人気曲をHTMLに表示
+        function displayTopTracks(tracks) {
+            const songList = document.getElementById('song-list');
+            songList.innerHTML = ''; // 以前の結果を消去
+
+            tracks.forEach((track, index) => {
+                const songDiv = document.createElement('div');
+                songDiv.classList.add('song');
+                songDiv.innerHTML = `
+                    <div class="rank">${index + 1}</div>
+                    <img src="${track.album.images[2].url}" alt="${track.name}">
+                    <div class="song-info">
+                        <strong>${track.name}</strong><br>
+                        <span>${track.artists.map(artist => artist.name).join(', ')}</span>
+                    </div>
+                `;
+                // 曲がクリックされたときにプレーヤーを表示
+                songDiv.onclick = () => playSong(track.uri);
+                songList.appendChild(songDiv);
+            });
+        }
+
+        // 曲のURIを使ってSpotifyの埋め込みプレーヤーを表示
+        function playSong(trackUri) {
+            const playerContainer = document.getElementById('player-container');
+            playerContainer.innerHTML = `
+                <iframe src="https://open.spotify.com/embed/track/${trackUri.split(':')[2]}" width="100%" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+            `;
+        }
+    </script>
+</body>
+</html>
